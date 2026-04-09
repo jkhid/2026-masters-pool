@@ -70,6 +70,17 @@ function PlayerCard({ player }: { player: PoolPlayerStanding }) {
                 g.counting ? "bg-counting" : hasScore ? "bg-card-border" : "bg-card-border/40"
               }`} />
 
+              {/* Golfer headshot */}
+              <img
+                src={g.score?.espnId
+                  ? `https://a.espncdn.com/combiner/i?img=/i/headshots/golf/players/full/${g.score.espnId}.png&w=96&h=70&cb=1`
+                  : "https://a.espncdn.com/i/headshots/nophoto.png"
+                }
+                alt={g.name}
+                onError={(e) => { (e.target as HTMLImageElement).src = "https://a.espncdn.com/i/headshots/nophoto.png"; }}
+                className={`w-8 h-8 rounded-full object-cover flex-shrink-0 bg-card-border ${isDropped ? "grayscale opacity-60" : ""}`}
+              />
+
               {/* Golfer info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">

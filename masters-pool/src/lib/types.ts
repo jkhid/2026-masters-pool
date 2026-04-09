@@ -20,6 +20,7 @@ export interface GolferScore {
   status: "active" | "cut" | "wd" | "dq";
   position: string | null; // "T3", "1", "CUT", etc.
   today: number | null; // today's score relative to par
+  espnId: string | null; // ESPN athlete ID for headshot URLs
   scorecards?: RoundScorecard[]; // hole-by-hole data per round
 }
 

@@ -231,6 +231,7 @@ function parseESPNData(data: any): ScoreData | null {
           status: parseStatus(comp),
           position: comp.status?.position?.displayName || comp.sortOrder?.toString() || null,
           today: parseToday(comp),
+          espnId: comp.id || comp.athlete?.id || null,
           scorecards: parseScorecards(comp),
         };
       }
@@ -278,7 +279,7 @@ export function mergeWithManual(espnData: ScoreData | null, manualScores: Manual
   const mergedGolfers = { ...base.golfers };
 
   for (const [name, manual] of Object.entries(manualScores.golfers)) {
-    // Manual overrides ESPN, but preserve scorecards from ESPN
+    // Manual overrides ESPN, but preserve scorecards and espnId from ESPN
     mergedGolfers[name] = {
       name,
       rounds: manual.rounds,
@@ -287,6 +288,7 @@ export function mergeWithManual(espnData: ScoreData | null, manualScores: Manual
       thru: manual.thru,
       position: manual.position,
       today: manual.today,
+      espnId: base.golfers[name]?.espnId ?? null,
       scorecards: base.golfers[name]?.scorecards,
     };
   }
