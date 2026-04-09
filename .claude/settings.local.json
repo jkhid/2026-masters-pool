@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest masters-pool --typescript --tailwind --eslint --app --src-dir --no-import-alias --use-npm)",
+      "Bash(npm run:*)",
+      "Bash(npx next:*)",
+      "Bash(npm install:*)",
+      "Bash(curl -s http://localhost:3456/api/scores)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('Golfers found:', len\\(d['golfers']\\)\\); print\\('Source:', d['source']\\); print\\('Status:', d['tournamentStatus']\\); print\\('Round:', d['tournamentRound']\\); print\\('Names:', list\\(d['golfers'].keys\\(\\)\\)\\)\")",
+      "Bash(python3 -c ':*)",
+      "Bash(curl -s \"https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard\")",
+      "Bash(lsof -ti:3456)",
+      "Bash(xargs kill:*)"
+    ]
+  }
+}
