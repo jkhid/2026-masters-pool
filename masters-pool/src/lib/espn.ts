@@ -86,7 +86,7 @@ function parseRounds(competitor: any): (number | null)[] {
 
   for (let i = 0; i < Math.min(linescores.length, 4); i++) {
     const val = linescores[i]?.value;
-    if (val !== undefined && val !== null && val > 0) {
+    if (val !== undefined && val !== null && typeof val === "number") {
       rounds[i] = val;
     }
   }
@@ -97,6 +97,7 @@ function parseToday(competitor: any): number | null {
   // Today's score relative to par
   const score = competitor.score;
   if (score !== undefined && score !== null) {
+    if (String(score) === "E") return 0;
     const val = parseInt(score, 10);
     if (!isNaN(val)) return val;
   }
@@ -114,6 +115,7 @@ function parseTotal(competitor: any): number | null {
   // Total to par
   const totalToPar = competitor.totalToPar ?? competitor.score;
   if (totalToPar !== undefined && totalToPar !== null) {
+    if (String(totalToPar) === "E") return 0;
     const val = parseInt(String(totalToPar), 10);
     if (!isNaN(val)) return val;
   }
