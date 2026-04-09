@@ -2,12 +2,14 @@
 import { ScoreData } from "@/lib/types";
 import { ALL_GOLFERS, getGolferOwners } from "@/lib/pool-data";
 import { formatScore, formatRoundScore } from "@/lib/scoring";
+import { useScorecard } from "@/contexts/ScorecardContext";
 
 interface GolferScoreboardProps {
   scoreData: ScoreData;
 }
 
 export default function GolferScoreboard({ scoreData }: GolferScoreboardProps) {
+  const { openScorecard } = useScorecard();
   // Sort golfers by total score (ascending), N/A at bottom
   const sortedGolfers = [...ALL_GOLFERS].sort((a, b) => {
     const aScore = scoreData.golfers[a]?.total;
@@ -55,7 +57,10 @@ export default function GolferScoreboard({ scoreData }: GolferScoreboardProps) {
               <div className="text-xs text-text-muted">
                 {score?.position || "-"}
               </div>
-              <div className={`truncate ${isCut ? "line-through text-cut" : ""}`}>
+              <div
+                className={`truncate cursor-pointer hover:underline ${isCut ? "line-through text-cut" : ""}`}
+                onClick={() => openScorecard(name)}
+              >
                 {name}
                 {isCut && (
                   <span className="ml-1 text-xs text-cut">({score?.status?.toUpperCase()})</span>

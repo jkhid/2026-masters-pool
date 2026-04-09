@@ -1,6 +1,7 @@
 "use client";
 import { PoolPlayerStanding } from "@/lib/types";
 import { formatScore } from "@/lib/scoring";
+import { useScorecard } from "@/contexts/ScorecardContext";
 
 interface LeaderboardProps {
   standings: PoolPlayerStanding[];
@@ -23,6 +24,7 @@ function getRankColor(rank: number): string {
 }
 
 export default function Leaderboard({ standings, onSelectPlayer, selectedPlayer }: LeaderboardProps) {
+  const { openScorecard } = useScorecard();
   return (
     <div className="bg-card-bg border border-card-border rounded-lg overflow-hidden">
       <div className="bg-masters-green/20 border-b border-card-border px-4 py-3">
@@ -83,13 +85,14 @@ export default function Leaderboard({ standings, onSelectPlayer, selectedPlayer 
                   return (
                     <span
                       key={g.name}
-                      className={`text-xs px-2 py-0.5 rounded ${
+                      className={`text-xs px-2 py-0.5 rounded cursor-pointer hover:underline ${
                         g.counting
                           ? "bg-counting/15 text-counting"
                           : isDropped
                             ? "bg-dropped/10 text-dropped line-through"
                             : "bg-white/5 text-text-muted"
                       }`}
+                      onClick={(e) => { e.stopPropagation(); openScorecard(g.name); }}
                     >
                       {g.name.split(" ").pop()} {g.score ? formatScore(g.score.total) : ""}
                     </span>
@@ -109,9 +112,12 @@ export default function Leaderboard({ standings, onSelectPlayer, selectedPlayer 
                 const isDropped = hasScore && !g.counting;
                 return (
                   <div key={g.name} className={`text-sm ${isDropped ? "opacity-40" : !hasScore && !g.counting ? "opacity-50" : ""}`}>
-                    <div className={`truncate ${
-                      g.counting ? "text-counting" : isDropped ? "text-dropped line-through" : "text-text-muted"
-                    }`}>
+                    <div
+                      className={`truncate cursor-pointer hover:underline ${
+                        g.counting ? "text-counting" : isDropped ? "text-dropped line-through" : "text-text-muted"
+                      }`}
+                      onClick={(e) => { e.stopPropagation(); openScorecard(g.name); }}
+                    >
                       {g.name.split(" ").pop()}
                     </div>
                     <div className="text-xs text-text-muted">

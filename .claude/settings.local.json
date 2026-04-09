@@ -11,7 +11,10 @@
       "Bash(python3 -c ':*)",
       "Bash(curl -s \"https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard\")",
       "Bash(lsof -ti:3456)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "WebFetch(domain:site.api.espn.com)",
+      "Read(//Users/jk/.nvm/versions/node/**)",
+      "Bash(brew list:*)"
     ]
   }
 }

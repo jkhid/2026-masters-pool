@@ -1,7 +1,10 @@
-import { GolferScore, ScoreData, ManualScores } from "./types";
+import { GolferScore, ScoreData, ManualScores, HoleScore, RoundScorecard } from "./types";
 import { ALL_GOLFERS } from "./pool-data";
 
 const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard";
+
+// Augusta National pars (holes 1-18)
+const AUGUSTA_PARS = [4, 5, 4, 3, 4, 3, 4, 5, 4, 4, 4, 3, 5, 4, 5, 3, 4, 4];
 
 // Server-side cache
 let cachedData: { data: unknown; timestamp: number } | null = null;
@@ -128,6 +131,46 @@ function parseTotal(competitor: any): number | null {
   }
   return null;
 }
+function parseScorecards(competitor: any): RoundScorecard[] {
+  const roundLinescores = competitor.linescores || [];
+  const scorecards: RoundScorecard[] = [];
+
+  for (let r = 0; r < Math.min(roundLinescores.length, 4); r++) {
+    const roundData = roundLinescores[r];
+    const holeScores = roundData?.linescores || [];
+
+    if (holeScores.length === 0) continue;
+
+    const holes: HoleScore[] = holeScores.map((h: any, idx: number) => {
+      const strokes = h.value ?? 0;
+      const par = AUGUSTA_PARS[idx] ?? 4;
+      let toPar = strokes - par;
+
+      // Prefer ESPN's scoreType if available
+      const scoreTypeDisplay = h.scoreType?.displayValue;
+      if (scoreTypeDisplay === "E") {
+        toPar = 0;
+      } else if (scoreTypeDisplay) {
+        const parsed = parseInt(scoreTypeDisplay, 10);
+        if (!isNaN(parsed)) toPar = parsed;
+      }
+
+      return { hole: idx + 1, strokes, toPar, par };
+    });
+
+    const totalStrokes = roundData.value ?? holes.reduce((s, h) => s + h.strokes, 0);
+    const roundToPar = holes.reduce((s, h) => s + h.toPar, 0);
+
+    scorecards.push({
+      round: r + 1,
+      holes,
+      total: totalStrokes,
+      toPar: roundToPar,
+    });
+  }
+
+  return scorecards;
+}
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export async function fetchESPNScores(): Promise<ScoreData | null> {
@@ -188,6 +231,7 @@ function parseESPNData(data: any): ScoreData | null {
           status: parseStatus(comp),
           position: comp.status?.position?.displayName || comp.sortOrder?.toString() || null,
           today: parseToday(comp),
+          scorecards: parseScorecards(comp),
         };
       }
     }
@@ -234,7 +278,7 @@ export function mergeWithManual(espnData: ScoreData | null, manualScores: Manual
   const mergedGolfers = { ...base.golfers };
 
   for (const [name, manual] of Object.entries(manualScores.golfers)) {
-    // Manual overrides ESPN
+    // Manual overrides ESPN, but preserve scorecards from ESPN
     mergedGolfers[name] = {
       name,
       rounds: manual.rounds,
@@ -243,6 +287,7 @@ export function mergeWithManual(espnData: ScoreData | null, manualScores: Manual
       thru: manual.thru,
       position: manual.position,
       today: manual.today,
+      scorecards: base.golfers[name]?.scorecards,
     };
   }
 

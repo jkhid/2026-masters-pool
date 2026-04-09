@@ -1,6 +1,7 @@
 "use client";
 import { PoolPlayerStanding } from "@/lib/types";
 import { formatScore, formatRoundScore } from "@/lib/scoring";
+import { useScorecard } from "@/contexts/ScorecardContext";
 
 interface PlayerDetailProps {
   player: PoolPlayerStanding;
@@ -8,6 +9,7 @@ interface PlayerDetailProps {
 }
 
 export default function PlayerDetail({ player, onClose }: PlayerDetailProps) {
+  const { openScorecard } = useScorecard();
   return (
     <div className="bg-card-bg border border-card-border rounded-lg overflow-hidden">
       <div className="bg-masters-green/20 border-b border-card-border px-4 py-3 flex items-center justify-between">
@@ -57,7 +59,10 @@ export default function PlayerDetail({ player, onClose }: PlayerDetailProps) {
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                 g.counting ? "bg-counting" : "bg-dropped"
               }`} />
-              <span className={`truncate text-sm ${isCut ? "line-through text-cut" : ""}`}>
+              <span
+                className={`truncate text-sm cursor-pointer hover:underline ${isCut ? "line-through text-cut" : ""}`}
+                onClick={() => openScorecard(g.name)}
+              >
                 {g.name}
               </span>
               {isCut && (

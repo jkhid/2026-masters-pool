@@ -7,6 +7,7 @@ import Leaderboard from "@/components/Leaderboard";
 import PlayerDetail from "@/components/PlayerDetail";
 import GolferScoreboard from "@/components/GolferScoreboard";
 import PicksGrid from "@/components/PicksGrid";
+import { ScorecardProvider } from "@/contexts/ScorecardContext";
 
 type Tab = "leaderboard" | "picks" | "golfers";
 
@@ -44,6 +45,7 @@ export default function Home() {
   const selectedStanding = standings.find(s => s.name === selectedPlayer) || null;
 
   return (
+    <ScorecardProvider scoreData={scoreData ?? null}>
     <div className="min-h-screen bg-bg">
       <Header
         lastFetch={lastFetch}
@@ -136,5 +138,6 @@ export default function Home() {
         <p className="mt-1 font-serif italic text-masters-green">A Tradition Unlike Any Other</p>
       </footer>
     </div>
+    </ScorecardProvider>
   );
 }

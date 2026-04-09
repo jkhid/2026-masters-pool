@@ -1,6 +1,7 @@
 "use client";
 import { PoolPlayerStanding } from "@/lib/types";
 import { formatScore, formatRoundScore } from "@/lib/scoring";
+import { useScorecard } from "@/contexts/ScorecardContext";
 
 interface PicksGridProps {
   standings: PoolPlayerStanding[];
@@ -14,6 +15,7 @@ function getRankSuffix(rank: number): string {
 }
 
 function PlayerCard({ player }: { player: PoolPlayerStanding }) {
+  const { openScorecard } = useScorecard();
   const isLeader = player.rank === 1;
 
   return (
@@ -66,7 +68,10 @@ function PlayerCard({ player }: { player: PoolPlayerStanding }) {
               {/* Golfer info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium truncate ${isCut ? "line-through text-cut" : "text-white"}`}>
+                  <span
+                    className={`text-sm font-medium truncate cursor-pointer hover:underline ${isCut ? "line-through text-cut" : "text-white"}`}
+                    onClick={() => openScorecard(g.name)}
+                  >
                     {g.name}
                   </span>
                   {isCut && (
