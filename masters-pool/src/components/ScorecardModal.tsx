@@ -10,12 +10,12 @@ interface ScorecardModalProps {
 }
 
 function ScoreCell({ strokes, toPar }: { strokes: number; toPar: number }) {
+  const base = "w-10 h-10 flex items-center justify-center";
   if (toPar <= -3) {
-    // Albatross or better: filled double circle
     return (
-      <div className="w-8 h-8 flex items-center justify-center">
-        <div className="w-7 h-7 rounded-full border-2 border-yellow-400 flex items-center justify-center">
-          <div className="w-5 h-5 rounded-full bg-yellow-400 text-black flex items-center justify-center text-xs font-bold">
+      <div className={base}>
+        <div className="w-9 h-9 rounded-full border-2 border-yellow-400 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-yellow-400 text-black flex items-center justify-center text-sm font-bold">
             {strokes}
           </div>
         </div>
@@ -23,11 +23,10 @@ function ScoreCell({ strokes, toPar }: { strokes: number; toPar: number }) {
     );
   }
   if (toPar === -2) {
-    // Eagle: double circle
     return (
-      <div className="w-8 h-8 flex items-center justify-center">
-        <div className="w-7 h-7 rounded-full border-2 border-yellow-400 flex items-center justify-center">
-          <div className="w-5 h-5 rounded-full border border-yellow-400 flex items-center justify-center text-xs font-bold text-yellow-400">
+      <div className={base}>
+        <div className="w-9 h-9 rounded-full border-2 border-yellow-400 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full border border-yellow-400 flex items-center justify-center text-sm font-bold text-yellow-400">
             {strokes}
           </div>
         </div>
@@ -35,41 +34,112 @@ function ScoreCell({ strokes, toPar }: { strokes: number; toPar: number }) {
     );
   }
   if (toPar === -1) {
-    // Birdie: single circle
     return (
-      <div className="w-8 h-8 flex items-center justify-center">
-        <div className="w-6 h-6 rounded-full border-2 border-red-400 flex items-center justify-center text-xs font-bold text-red-400">
+      <div className={base}>
+        <div className="w-8 h-8 rounded-full border-2 border-red-400 flex items-center justify-center text-sm font-bold text-red-400">
           {strokes}
         </div>
       </div>
     );
   }
   if (toPar === 1) {
-    // Bogey: single square
     return (
-      <div className="w-8 h-8 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#5b9bd5] flex items-center justify-center text-xs font-bold text-[#5b9bd5]">
+      <div className={base}>
+        <div className="w-8 h-8 border-2 border-[#5b9bd5] flex items-center justify-center text-sm font-bold text-[#5b9bd5]">
           {strokes}
         </div>
       </div>
     );
   }
   if (toPar >= 2) {
-    // Double bogey+: double square
     return (
-      <div className="w-8 h-8 flex items-center justify-center">
-        <div className="w-7 h-7 border-2 border-[#5b9bd5] flex items-center justify-center">
-          <div className="w-5 h-5 border border-[#5b9bd5] flex items-center justify-center text-xs font-bold text-[#5b9bd5]">
+      <div className={base}>
+        <div className="w-9 h-9 border-2 border-[#5b9bd5] flex items-center justify-center">
+          <div className="w-6 h-6 border border-[#5b9bd5] flex items-center justify-center text-sm font-bold text-[#5b9bd5]">
             {strokes}
           </div>
         </div>
       </div>
     );
   }
-  // Par: plain number
   return (
-    <div className="w-8 h-8 flex items-center justify-center text-xs text-text-muted">
+    <div className={`${base} text-sm text-white/70`}>
       {strokes}
+    </div>
+  );
+}
+
+function NineHoleTable({
+  label,
+  holes,
+  holesStrokes,
+  holesPar,
+  showTotal,
+  totalStrokes,
+  totalPar,
+}: {
+  label: string;
+  holes: { hole: number; strokes: number; toPar: number; par: number }[];
+  holesStrokes: number;
+  holesPar: number;
+  showTotal?: boolean;
+  totalStrokes?: number;
+  totalPar?: number;
+}) {
+  return (
+    <div className="rounded-lg border border-card-border/40 overflow-hidden">
+      {/* Section header */}
+      <div className="bg-masters-green/15 px-4 py-2 border-b border-card-border/30">
+        <span className="text-xs font-semibold uppercase tracking-widest text-masters-yellow/80">{label}</span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-center border-collapse min-w-[480px]">
+          {/* Hole numbers */}
+          <thead>
+            <tr className="bg-white/[0.03]">
+              <th className="text-left py-3 px-4 w-16 text-xs font-semibold text-text-muted uppercase tracking-wider">Hole</th>
+              {holes.map(h => (
+                <th key={h.hole} className="py-3 px-1 text-sm font-semibold text-white/90 w-11">{h.hole}</th>
+              ))}
+              <th className="py-3 px-2 text-sm font-bold text-white w-14 border-l-2 border-card-border/60">
+                {label === "Front Nine" ? "Out" : "In"}
+              </th>
+              {showTotal && (
+                <th className="py-3 px-2 text-sm font-bold text-masters-yellow w-14 border-l-2 border-card-border/60">Tot</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {/* Par row */}
+            <tr className="border-t border-card-border/20">
+              <td className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Par</td>
+              {holes.map(h => (
+                <td key={h.hole} className="py-3 px-1 text-sm text-text-muted/80">{h.par}</td>
+              ))}
+              <td className="py-3 px-2 text-sm font-bold text-text-muted border-l-2 border-card-border/60">{holesPar}</td>
+              {showTotal && (
+                <td className="py-3 px-2 text-sm font-bold text-text-muted border-l-2 border-card-border/60">{totalPar}</td>
+              )}
+            </tr>
+            {/* Score row */}
+            <tr className="border-t border-card-border/20 bg-white/[0.02]">
+              <td className="text-left py-2 px-4 text-xs font-semibold text-white uppercase tracking-wider">Score</td>
+              {holes.map(h => (
+                <td key={h.hole} className="py-1 px-0">
+                  <div className="flex justify-center">
+                    <ScoreCell strokes={h.strokes} toPar={h.toPar} />
+                  </div>
+                </td>
+              ))}
+              <td className="py-3 px-2 text-base font-bold text-white border-l-2 border-card-border/60">{holesStrokes}</td>
+              {showTotal && (
+                <td className="py-3 px-2 text-base font-bold text-masters-yellow border-l-2 border-card-border/60">{totalStrokes}</td>
+              )}
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -77,14 +147,12 @@ function ScoreCell({ strokes, toPar }: { strokes: number; toPar: number }) {
 export default function ScorecardModal({ golferName, scorecards, onClose }: ScorecardModalProps) {
   const [selectedRound, setSelectedRound] = useState(0);
 
-  // Default to the latest round with data
   useEffect(() => {
     if (scorecards.length > 0) {
       setSelectedRound(scorecards.length - 1);
     }
   }, [scorecards]);
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -93,7 +161,6 @@ export default function ScorecardModal({ golferName, scorecards, onClose }: Scor
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  // Prevent body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
@@ -129,20 +196,28 @@ export default function ScorecardModal({ golferName, scorecards, onClose }: Scor
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className="relative bg-card-bg border border-card-border rounded-xl overflow-hidden max-w-2xl w-full shadow-2xl"
+        className="relative bg-card-bg border border-card-border rounded-xl overflow-hidden max-w-3xl w-full shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-masters-green/20 border-b border-card-border px-5 py-4 flex items-center justify-between">
+        <div className="bg-masters-green/20 border-b border-card-border px-6 py-5 flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-serif text-masters-yellow">{golferName}</h3>
-            <p className="text-sm text-text-muted mt-0.5">
-              Round {card.round} &middot; {formatScore(card.toPar)} ({totalStrokes})
+            <h3 className="text-2xl font-serif text-masters-yellow">{golferName}</h3>
+            <p className="text-sm text-text-muted mt-1">
+              Round {card.round} &middot;{" "}
+              <span className={`font-bold ${
+                card.toPar !== null && card.toPar < 0 ? "text-red-400" :
+                card.toPar !== null && card.toPar > 0 ? "text-blue-400" :
+                "text-masters-yellow"
+              }`}>
+                {formatScore(card.toPar)}
+              </span>
+              {" "}({totalStrokes})
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-text-muted hover:text-white text-2xl leading-none px-2"
+            className="text-text-muted hover:text-white text-3xl leading-none px-2 transition-colors"
           >
             &times;
           </button>
@@ -150,15 +225,15 @@ export default function ScorecardModal({ golferName, scorecards, onClose }: Scor
 
         {/* Round tabs */}
         {scorecards.length > 1 && (
-          <div className="flex gap-1 px-5 pt-3">
+          <div className="flex gap-1.5 px-6 pt-4">
             {scorecards.map((sc, i) => (
               <button
                 key={sc.round}
                 onClick={() => setSelectedRound(i)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   i === selectedRound
                     ? "bg-masters-green text-white"
-                    : "bg-white/5 text-text-muted hover:text-white"
+                    : "bg-white/5 text-text-muted hover:text-white hover:bg-white/10"
                 }`}
               >
                 R{sc.round} ({formatScore(sc.toPar)})
@@ -167,103 +242,51 @@ export default function ScorecardModal({ golferName, scorecards, onClose }: Scor
           </div>
         )}
 
-        {/* Scorecard */}
-        <div className="p-5 overflow-x-auto">
-          {/* Front 9 */}
-          <table className="w-full text-center text-xs border-collapse mb-3">
-            <thead>
-              <tr className="text-text-muted/60 uppercase tracking-wider">
-                <th className="text-left py-1.5 px-1 w-12 font-medium">Hole</th>
-                {front9.map(h => (
-                  <th key={h.hole} className="py-1.5 px-0.5 font-medium w-8">{h.hole}</th>
-                ))}
-                <th className="py-1.5 px-1 font-bold w-10 border-l border-card-border">Out</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="text-text-muted/80 border-t border-card-border/30">
-                <td className="text-left py-1.5 px-1 font-medium">Par</td>
-                {front9.map(h => (
-                  <td key={h.hole} className="py-1.5 px-0.5">{h.par}</td>
-                ))}
-                <td className="py-1.5 px-1 font-bold border-l border-card-border">{front9Par}</td>
-              </tr>
-              <tr className="border-t border-card-border/30">
-                <td className="text-left py-2 px-1 font-medium text-white">Score</td>
-                {front9.map(h => (
-                  <td key={h.hole} className="py-1 px-0">
-                    <div className="flex justify-center">
-                      <ScoreCell strokes={h.strokes} toPar={h.toPar} />
-                    </div>
-                  </td>
-                ))}
-                <td className="py-1.5 px-1 font-bold text-white border-l border-card-border">{front9Strokes}</td>
-              </tr>
-            </tbody>
-          </table>
+        {/* Scorecard sections */}
+        <div className="p-6 space-y-4">
+          <NineHoleTable
+            label="Front Nine"
+            holes={front9}
+            holesStrokes={front9Strokes}
+            holesPar={front9Par}
+          />
 
-          {/* Back 9 */}
           {back9.length > 0 && (
-            <table className="w-full text-center text-xs border-collapse">
-              <thead>
-                <tr className="text-text-muted/60 uppercase tracking-wider">
-                  <th className="text-left py-1.5 px-1 w-12 font-medium">Hole</th>
-                  {back9.map(h => (
-                    <th key={h.hole} className="py-1.5 px-0.5 font-medium w-8">{h.hole}</th>
-                  ))}
-                  <th className="py-1.5 px-1 font-bold w-10 border-l border-card-border">In</th>
-                  <th className="py-1.5 px-1 font-bold w-10 border-l border-card-border">Tot</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="text-text-muted/80 border-t border-card-border/30">
-                  <td className="text-left py-1.5 px-1 font-medium">Par</td>
-                  {back9.map(h => (
-                    <td key={h.hole} className="py-1.5 px-0.5">{h.par}</td>
-                  ))}
-                  <td className="py-1.5 px-1 font-bold border-l border-card-border">{back9Par}</td>
-                  <td className="py-1.5 px-1 font-bold border-l border-card-border">{totalPar}</td>
-                </tr>
-                <tr className="border-t border-card-border/30">
-                  <td className="text-left py-2 px-1 font-medium text-white">Score</td>
-                  {back9.map(h => (
-                    <td key={h.hole} className="py-1 px-0">
-                      <div className="flex justify-center">
-                        <ScoreCell strokes={h.strokes} toPar={h.toPar} />
-                      </div>
-                    </td>
-                  ))}
-                  <td className="py-1.5 px-1 font-bold text-white border-l border-card-border">{back9Strokes}</td>
-                  <td className="py-1.5 px-1 font-bold text-white border-l border-card-border">{totalStrokes}</td>
-                </tr>
-              </tbody>
-            </table>
+            <NineHoleTable
+              label="Back Nine"
+              holes={back9}
+              holesStrokes={back9Strokes}
+              holesPar={back9Par}
+              showTotal
+              totalStrokes={totalStrokes}
+              totalPar={totalPar}
+            />
           )}
 
           {/* Legend */}
-          <div className="flex flex-wrap gap-4 mt-4 pt-3 border-t border-card-border/30 text-[10px] text-text-muted justify-center">
+          <div className="flex flex-wrap gap-5 pt-2 text-xs text-text-muted justify-center">
             <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full bg-yellow-400 flex items-center justify-center text-black text-[8px] font-bold">2</span>
+              <span className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-black text-[9px] font-bold">2</span>
               Albatross
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full border border-yellow-400 flex items-center justify-center text-yellow-400 text-[8px] font-bold">3</span>
+              <span className="w-5 h-5 rounded-full border-2 border-yellow-400 flex items-center justify-center text-yellow-400 text-[9px] font-bold">3</span>
               Eagle
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 rounded-full border border-red-400 flex items-center justify-center text-red-400 text-[8px] font-bold">3</span>
+              <span className="w-5 h-5 rounded-full border-2 border-red-400 flex items-center justify-center text-red-400 text-[9px] font-bold">3</span>
               Birdie
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="text-[8px]">4</span>
+              <span className="text-white/70 text-sm">4</span>
               Par
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 border border-[#5b9bd5] flex items-center justify-center text-[#5b9bd5] text-[8px] font-bold">5</span>
+              <span className="w-5 h-5 border-2 border-[#5b9bd5] flex items-center justify-center text-[#5b9bd5] text-[9px] font-bold">5</span>
               Bogey
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-4 h-4 border-2 border-[#5b9bd5] flex items-center justify-center text-[#5b9bd5] text-[8px] font-bold">6</span>
+              <span className="w-5 h-5 border-2 border-[#5b9bd5] flex items-center justify-center text-[#5b9bd5] text-[9px] font-bold">6</span>
               Dbl Bogey+
             </span>
           </div>
