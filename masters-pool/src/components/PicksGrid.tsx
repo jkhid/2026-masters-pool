@@ -49,9 +49,14 @@ function PlayerCard({ player }: { player: PoolPlayerStanding }) {
         </div>
       </div>
 
-      {/* Golfer rows */}
+      {/* Golfer rows - counting first sorted by score, then dropped */}
       <div className="divide-y divide-card-border/30">
-        {player.golfers.map((g) => {
+        {[...player.golfers].sort((a, b) => {
+          if (a.counting !== b.counting) return a.counting ? -1 : 1;
+          const aTotal = a.score?.total ?? 999;
+          const bTotal = b.score?.total ?? 999;
+          return aTotal - bTotal;
+        }).map((g) => {
           const isCut = g.score?.status === "cut" || g.score?.status === "wd" || g.score?.status === "dq";
           const hasScore = g.score?.total !== null && g.score?.total !== undefined;
           const isDropped = hasScore && !g.counting;
