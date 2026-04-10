@@ -38,12 +38,21 @@ export interface GolferWithStatus {
   counting: boolean;
 }
 
+export interface CutLineInfo {
+  projectedScore: number;   // the to-par score at position 50
+  isProjected: boolean;     // true during R1/R2, false after cut is official
+  playersAtLine: number;    // how many players are exactly at the cut score
+  playersMakingCut: number; // total making the cut (including ties)
+  totalField: number;       // total competitors in the field
+}
+
 export interface ScoreData {
   golfers: Record<string, GolferScore>;
   lastUpdated: string;
   tournamentStatus: "pre" | "in_progress" | "complete";
   tournamentRound: number;
   source: "espn" | "manual" | "mixed";
+  cutLine: CutLineInfo | null;
 }
 
 export interface ManualScoreEntry {

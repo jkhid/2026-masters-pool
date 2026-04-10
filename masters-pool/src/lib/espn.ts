@@ -1,4 +1,4 @@
-import { GolferScore, ScoreData, ManualScores, HoleScore, RoundScorecard } from "./types";
+import { GolferScore, ScoreData, ManualScores, HoleScore, RoundScorecard, CutLineInfo } from "./types";
 import { ALL_GOLFERS } from "./pool-data";
 
 const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard";
@@ -218,23 +218,58 @@ function parseESPNData(data: any): ScoreData | null {
     const nameMap = buildNameMap();
     const golfers: Record<string, GolferScore> = {};
 
+    // Collect ALL competitor scores for cut line calculation
+    const allScores: number[] = [];
+
     for (const comp of competitors) {
       const espnName = comp.athlete?.displayName || comp.athlete?.fullName || "";
+      const total = parseTotal(comp);
+      const status = parseStatus(comp);
+
+      // Track all active competitor scores for cut line
+      if (total !== null && status === "active") {
+        allScores.push(total);
+      }
+
       const poolName = findPoolName(espnName, nameMap);
 
       if (poolName) {
         golfers[poolName] = {
           name: poolName,
           rounds: parseRounds(comp),
-          total: parseTotal(comp),
+          total,
           thru: parseThru(comp),
-          status: parseStatus(comp),
+          status,
           position: comp.status?.position?.displayName || comp.sortOrder?.toString() || null,
           today: parseToday(comp),
           espnId: comp.id || comp.athlete?.id || null,
           scorecards: parseScorecards(comp),
         };
       }
+    }
+
+    // Calculate cut line (top 50 + ties)
+    let cutLine: CutLineInfo | null = null;
+    if (allScores.length > 0) {
+      allScores.sort((a, b) => a - b);
+      const cutIndex = Math.min(49, allScores.length - 1); // position 50 (0-indexed: 49)
+      const projectedScore = allScores[cutIndex];
+      const playersAtLine = allScores.filter(s => s === projectedScore).length;
+      const playersMakingCut = allScores.filter(s => s <= projectedScore).length;
+
+      // Cut is official after round 2, projected during R1/R2
+      const hasCutPlayers = competitors.some((c: any) => {
+        const st = c.status?.type?.name?.toLowerCase() || "";
+        return st === "cut";
+      });
+
+      cutLine = {
+        projectedScore,
+        isProjected: !hasCutPlayers,
+        playersAtLine,
+        playersMakingCut,
+        totalField: competitors.length,
+      };
     }
 
     // Determine tournament status
@@ -254,6 +289,7 @@ function parseESPNData(data: any): ScoreData | null {
       tournamentStatus,
       tournamentRound: currentRound,
       source: "espn",
+      cutLine,
     };
   } catch (error) {
     console.error("ESPN parse error:", error);
@@ -269,6 +305,7 @@ export function mergeWithManual(espnData: ScoreData | null, manualScores: Manual
     tournamentStatus: "pre",
     tournamentRound: 1,
     source: "manual",
+    cutLine: null,
   };
 
   if (!manualScores || Object.keys(manualScores.golfers).length === 0) {

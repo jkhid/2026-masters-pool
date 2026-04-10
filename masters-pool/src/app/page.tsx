@@ -7,6 +7,7 @@ import Leaderboard from "@/components/Leaderboard";
 import PlayerDetail from "@/components/PlayerDetail";
 import GolferScoreboard from "@/components/GolferScoreboard";
 import PicksGrid from "@/components/PicksGrid";
+import CutLineHeader from "@/components/CutLineHeader";
 import { ScorecardProvider } from "@/contexts/ScorecardContext";
 
 type Tab = "leaderboard" | "picks" | "golfers";
@@ -60,7 +61,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Tournament status */}
+      {/* Tournament status / Cut line */}
       {scoreData?.tournamentStatus === "pre" && (
         <div className="bg-masters-green/30 border-b border-masters-green px-4 py-3 text-center">
           <p className="text-masters-yellow font-serif">
@@ -106,6 +107,15 @@ export default function Home() {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 py-4 space-y-4">
+        {/* Cut line header - show during R1/R2 or after cut */}
+        {scoreData?.cutLine && scoreData.tournamentStatus !== "pre" && (
+          <CutLineHeader
+            cutLine={scoreData.cutLine}
+            golfers={scoreData.golfers}
+            tournamentRound={scoreData.tournamentRound}
+          />
+        )}
+
         {tab === "leaderboard" && (
           <>
             <Leaderboard
