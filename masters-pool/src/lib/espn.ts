@@ -272,16 +272,43 @@ function parseESPNData(data: any): ScoreData | null {
       };
     }
 
-    // Determine tournament status
+    // Determine tournament status - infer from data if status fields are missing
     const statusType = mastersEvent.status?.type?.name?.toLowerCase() || "";
     let tournamentStatus: "pre" | "in_progress" | "complete" = "pre";
     if (statusType === "in" || statusType === "in progress") {
       tournamentStatus = "in_progress";
     } else if (statusType === "post" || statusType === "complete" || statusType === "final") {
       tournamentStatus = "complete";
+    } else {
+      // Infer from data: if any competitor has scores, tournament is in progress
+      const hasAnyScores = competitors.some((c: any) => {
+        const ls = c.linescores || [];
+        return ls.length > 0 && ls[0]?.linescores?.length > 0;
+      });
+      if (hasAnyScores) {
+        // Check if all 4 rounds are complete for leaders
+        const allRoundsComplete = competitors.some((c: any) => {
+          const ls = c.linescores || [];
+          return ls.length >= 4 && ls[3]?.linescores?.length === 18;
+        });
+        tournamentStatus = allRoundsComplete ? "complete" : "in_progress";
+      }
     }
 
-    const currentRound = mastersEvent.status?.period || competition.status?.period || 1;
+    // Infer current round from data
+    const currentRound = mastersEvent.status?.period || competition.status?.period || (() => {
+      // Find the max round that has any hole data
+      let maxRound = 1;
+      for (const comp of competitors) {
+        const ls = comp.linescores || [];
+        for (let i = 0; i < Math.min(ls.length, 4); i++) {
+          if (ls[i]?.linescores?.length > 0) {
+            maxRound = Math.max(maxRound, i + 1);
+          }
+        }
+      }
+      return maxRound;
+    })();
 
     return {
       golfers,
