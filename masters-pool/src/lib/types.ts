@@ -71,6 +71,35 @@ export interface ManualScores {
 
 export type MajorKey = "masters" | "pga-championship" | "us-open" | "open-championship";
 
+export type OddsMarket = "win" | "top5" | "top10" | "top20";
+
+export interface BookmakerPrice {
+  bookmaker: string;       // "DraftKings", "FanDuel", etc.
+  price: number;           // American odds, e.g. +450 or -200
+  decimal: number;         // Decimal odds, e.g. 5.5
+  lastUpdate: string;      // ISO datetime
+}
+
+export interface GolferMarketOdds {
+  best: BookmakerPrice;
+  all: BookmakerPrice[];   // sorted best → worst
+}
+
+export interface GolferOdds {
+  name: string;
+  markets: Partial<Record<OddsMarket, GolferMarketOdds>>;
+}
+
+export interface MajorOddsSnapshot {
+  majorKey: MajorKey;
+  sportTitle: string;       // e.g. "Masters Tournament"
+  commenceTime: string | null;
+  fetchedAt: string;        // ISO datetime
+  byGolfer: Record<string, GolferOdds>;  // keyed by normalized golfer name (lowercase)
+  displayNameByKey: Record<string, string>; // normalized → display name
+  source: "the-odds-api";
+}
+
 export interface MajorCalendarEntry {
   majorKey: MajorKey;
   espnEventId: string;

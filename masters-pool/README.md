@@ -16,9 +16,13 @@ supabase bkcEHVex5N3m8CPs
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ADMIN_PASSWORD=
+# Optional: enables betting-odds chips on the tier picker (free signup at the-odds-api.com)
+ODDS_API_KEY=
 ```
 
 Use `ADMIN_PASSWORD` for the admin screen. Keep the Supabase service role key server-side only.
+
+`ODDS_API_KEY` is optional. When set, the contest picking UI shows outright-winner betting odds (best price + bookmaker comparison) next to each golfer in the tier picker. Sign up for a free key at <https://the-odds-api.com>; the free tier (500 requests/month) is enough with the built-in 30-minute cache.
 
 ## Supabase
 

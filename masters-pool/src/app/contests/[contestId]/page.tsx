@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ContestPick, GolferScore, PublicContestState, ScoreData } from "@/lib/types";
+import { ContestPick, GolferOdds, GolferScore, MajorOddsSnapshot, PublicContestState, ScoreData } from "@/lib/types";
 import { calculateStandingsForPlayers, ScoringPlayerPicks } from "@/lib/scoring";
 import { useScores } from "@/hooks/useScores";
 import PicksGrid from "@/components/PicksGrid";
@@ -37,6 +37,7 @@ export default function ContestPage() {
   const [picksByTierId, setPicksByTierId] = useState<Record<string, string>>({});
   const [revealedTab, setRevealedTab] = useState<RevealedTab>("picks");
   const [selectedPoolPlayer, setSelectedPoolPlayer] = useState<string | null>(null);
+  const [odds, setOdds] = useState<MajorOddsSnapshot | null>(null);
   const { scoreData } = useScores();
 
   const loadContest = useCallback(async () => {
@@ -55,6 +56,15 @@ export default function ContestPage() {
   useEffect(() => {
     loadContest();
   }, [loadContest]);
+
+  // Fetch betting odds for this major (only relevant pre-reveal)
+  useEffect(() => {
+    if (!state?.contest.majorKey || state.revealPicks) return;
+    fetch(`/api/odds/${state.contest.majorKey}`)
+      .then((r) => r.json())
+      .then((data) => setOdds(data.snapshot ?? null))
+      .catch(() => {/* non-fatal */});
+  }, [state?.contest.majorKey, state?.revealPicks]);
 
   const hasStarted = useMemo(() => {
     if (!state?.contest.startsAt) return false;
@@ -303,6 +313,7 @@ export default function ContestPage() {
               setPicksByTierId={setPicksByTierId}
               onSubmitPicks={handleSubmitPicks}
               submitLabel={submitLabel}
+              odds={odds}
             />
           )}
         </main>
@@ -462,6 +473,7 @@ interface PrePickViewProps {
   setPicksByTierId: (picks: Record<string, string>) => void;
   onSubmitPicks: () => void;
   submitLabel: string;
+  odds: MajorOddsSnapshot | null;
 }
 
 function PrePickView({
@@ -478,6 +490,7 @@ function PrePickView({
   setPicksByTierId,
   onSubmitPicks,
   submitLabel,
+  odds,
 }: PrePickViewProps) {
   const isOpen = state.contest.status === "open";
   const picksCount = Object.keys(picksByTierId).length;
@@ -603,40 +616,18 @@ function PrePickView({
                   <span className="label tabular">{tier.golfers.length} golfers</span>
                 </div>
                 <div className="p-2 grid gap-1 sm:grid-cols-2">
-                  {tier.golfers.map((golfer) => {
-                    const isSelected = selectedGolfer === golfer.name;
-                    return (
-                      <label
-                        key={golfer.id}
-                        className={`relative cursor-pointer px-3.5 py-2.5 rounded-md text-sm transition-all border ${
-                          isSelected
-                            ? "border-gold/60 bg-gold/10 text-gold"
-                            : "border-transparent hover:bg-surface-2 text-text"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={tier.id}
-                          value={golfer.name}
-                          checked={isSelected}
-                          onChange={() =>
-                            setPicksByTierId({ ...picksByTierId, [tier.id]: golfer.name })
-                          }
-                          className="sr-only"
-                        />
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="truncate">
-                            {golfer.name}
-                          </span>
-                          {golfer.worldRank && (
-                            <span className="text-xs text-text-faint tabular shrink-0">
-                              #{golfer.worldRank}
-                            </span>
-                          )}
-                        </div>
-                      </label>
-                    );
-                  })}
+                  {tier.golfers.map((golfer) => (
+                    <GolferPickRow
+                      key={golfer.id}
+                      tierId={tier.id}
+                      golfer={golfer}
+                      selected={selectedGolfer === golfer.name}
+                      odds={odds}
+                      onSelect={() =>
+                        setPicksByTierId({ ...picksByTierId, [tier.id]: golfer.name })
+                      }
+                    />
+                  ))}
                 </div>
               </div>
             );
@@ -659,6 +650,213 @@ function PrePickView({
           </p>
         )}
       </section>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GOLFER PICK ROW — selectable card with optional expanded odds drawer
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface GolferPickRowProps {
+  tierId: string;
+  golfer: { id: string; name: string; worldRank: number | null };
+  selected: boolean;
+  odds: MajorOddsSnapshot | null;
+  onSelect: () => void;
+}
+
+function formatAmericanOdds(american: number): string {
+  if (american > 0) return `+${american}`;
+  return String(american);
+}
+
+function normalizeForLookup(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Common nickname → full name aliases. Names on bookmaker feeds often use the
+// formal name (Matthew) while our roster uses the common short form (Matt).
+const NICKNAME_TO_FULL: Record<string, string[]> = {
+  matt: ["matthew"],
+  matthew: ["matt"],
+  chris: ["christopher"],
+  christopher: ["chris"],
+  jake: ["jacob"],
+  jacob: ["jake"],
+  alex: ["alexander"],
+  alexander: ["alex"],
+  nick: ["nicholas", "nicolai"],
+  nicholas: ["nick"],
+  rob: ["robert"],
+  robert: ["rob", "bob"],
+  bob: ["robert"],
+  tom: ["thomas"],
+  thomas: ["tom"],
+  joe: ["joseph"],
+  joseph: ["joe"],
+  dan: ["daniel"],
+  daniel: ["dan"],
+  ben: ["benjamin"],
+  benjamin: ["ben"],
+  sam: ["samuel"],
+  samuel: ["sam"],
+  will: ["william"],
+  william: ["will", "billy"],
+  jj: ["j j"],
+};
+
+function expandNameVariants(normalized: string): string[] {
+  const parts = normalized.split(" ");
+  if (parts.length < 2) return [normalized];
+  const first = parts[0];
+  const rest = parts.slice(1).join(" ");
+  const variants = new Set<string>([normalized]);
+  const alternates = NICKNAME_TO_FULL[first] ?? [];
+  for (const alt of alternates) {
+    variants.add(`${alt} ${rest}`);
+  }
+  return [...variants];
+}
+
+// Try increasingly fuzzy matches: exact → nickname variants → last-name + first initial.
+function findGolferOdds(
+  odds: MajorOddsSnapshot | null,
+  golferName: string,
+): GolferOdds | null {
+  if (!odds || !golferName) return null;
+  const target = normalizeForLookup(golferName);
+
+  // 1. Exact match
+  if (odds.byGolfer[target]) return odds.byGolfer[target];
+
+  // 2. Nickname variants
+  for (const variant of expandNameVariants(target)) {
+    if (odds.byGolfer[variant]) return odds.byGolfer[variant];
+  }
+
+  // 3. Last name + first initial fallback (e.g. "matt fitzpatrick" → "m fitzpatrick")
+  const parts = target.split(" ");
+  if (parts.length >= 2) {
+    const lastName = parts[parts.length - 1];
+    const firstInitial = parts[0][0];
+    for (const key of Object.keys(odds.byGolfer)) {
+      const keyParts = key.split(" ");
+      if (keyParts.length < 2) continue;
+      const keyLast = keyParts[keyParts.length - 1];
+      const keyFirstInitial = keyParts[0][0];
+      if (keyLast === lastName && keyFirstInitial === firstInitial) {
+        return odds.byGolfer[key];
+      }
+    }
+  }
+
+  return null;
+}
+
+function GolferPickRow({ tierId, golfer, selected, odds, onSelect }: GolferPickRowProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  const golferOdds = findGolferOdds(odds, golfer.name);
+  const winOdds = golferOdds?.markets.win;
+  const bestPrice = winOdds?.best;
+  // Show "no line" placeholder only when we have an odds snapshot AT ALL but
+  // this particular golfer isn't in it. If `odds` is null, we just haven't
+  // fetched yet (or no API key) — don't clutter the UI.
+  const showNoLineHint = !!odds && !bestPrice;
+
+  return (
+    <div
+      className={`relative rounded-md text-sm transition-all border ${
+        selected
+          ? "border-gold/60 bg-gold/10"
+          : "border-transparent hover:bg-surface-2"
+      }`}
+    >
+      {/* Hidden radio for form semantics */}
+      <input
+        type="radio"
+        name={tierId}
+        value={golfer.name}
+        checked={selected}
+        onChange={onSelect}
+        className="sr-only"
+      />
+
+      {/* Main row — clickable to select */}
+      <div className="flex items-center gap-2 px-3.5 py-2.5">
+        <button
+          type="button"
+          onClick={onSelect}
+          className={`flex-1 min-w-0 flex items-baseline justify-between gap-2 text-left ${
+            selected ? "text-gold" : "text-text"
+          }`}
+        >
+          <span className="truncate">{golfer.name}</span>
+          {golfer.worldRank && (
+            <span className="text-xs text-text-faint tabular shrink-0">
+              #{golfer.worldRank}
+            </span>
+          )}
+        </button>
+
+        {/* Odds chip — gold when available, faint placeholder when missing */}
+        {bestPrice ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded((v) => !v);
+            }}
+            className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] tabular font-medium transition-colors ${
+              expanded
+                ? "bg-gold text-bg"
+                : "bg-bg-elev border border-gold/30 text-gold hover:bg-gold/10"
+            }`}
+            title="View all bookmakers"
+          >
+            {formatAmericanOdds(bestPrice.price)}
+            <span className="opacity-70 text-[9px]">{expanded ? "▴" : "▾"}</span>
+          </button>
+        ) : showNoLineHint ? (
+          <span
+            className="shrink-0 inline-flex items-center px-2 py-0.5 rounded text-[11px] tabular text-text-faint border border-border"
+            title="No betting line published for this golfer"
+          >
+            —
+          </span>
+        ) : null}
+      </div>
+
+      {/* Expanded odds drawer */}
+      {expanded && winOdds && (
+        <div className="border-t border-divider px-3.5 py-2.5 bg-bg-elev/40">
+          <div className="text-[10px] uppercase tracking-wider text-text-faint mb-1.5">
+            Win Odds · Best Price First
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            {winOdds.all.map((p, i) => (
+              <div
+                key={`${p.bookmaker}-${i}`}
+                className={`flex items-baseline justify-between text-xs ${
+                  i === 0 ? "text-gold" : "text-text-muted"
+                }`}
+              >
+                <span className="truncate">{p.bookmaker}</span>
+                <span className="tabular shrink-0 ml-2">
+                  {formatAmericanOdds(p.price)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
