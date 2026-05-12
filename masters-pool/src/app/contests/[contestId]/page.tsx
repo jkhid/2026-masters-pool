@@ -185,6 +185,33 @@ export default function ContestPage() {
     }
   };
 
+  const handleRevealContest = async () => {
+    const password = window.prompt("Enter the admin password to reveal picks.");
+    if (!password) return;
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(`/api/admin/contests/${contestId}/reveal`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": password,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Failed to reveal contest.");
+      setMessage("Picks revealed.");
+      await loadContest();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reveal contest.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSignOut = () => {
     setSignedIn(false);
     setName("");
@@ -245,22 +272,34 @@ export default function ContestPage() {
                     </p>
                   )}
                 </div>
-                <div className="card-elev px-5 py-3 inline-flex items-baseline gap-5">
-                  <div>
-                    <div className="text-2xl font-serif text-text tabular">
-                      {state.submittedCount}
+                <div className="flex flex-col sm:items-end gap-3">
+                  <div className="card-elev px-5 py-3 inline-flex items-baseline gap-5">
+                    <div>
+                      <div className="text-2xl font-serif text-text tabular">
+                        {state.submittedCount}
+                      </div>
+                      <div className="label text-text-faint text-[10px]">Submitted</div>
                     </div>
-                    <div className="label text-text-faint text-[10px]">Submitted</div>
+                    <div className="text-text-faint">/</div>
+                    <div>
+                      <div className="text-2xl font-serif text-text-muted tabular">
+                        {state.contest.expectedParticipants ?? state.activeParticipantCount}
+                      </div>
+                      <div className="label text-text-faint text-[10px]">
+                        {state.contest.expectedParticipants ? "Required" : "Active"}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-text-faint">/</div>
-                  <div>
-                    <div className="text-2xl font-serif text-text-muted tabular">
-                      {state.contest.expectedParticipants ?? state.activeParticipantCount}
-                    </div>
-                    <div className="label text-text-faint text-[10px]">
-                      {state.contest.expectedParticipants ? "Required" : "Active"}
-                    </div>
-                  </div>
+                  {!state.revealPicks && (
+                    <button
+                      type="button"
+                      onClick={handleRevealContest}
+                      disabled={saving}
+                      className="btn btn-gold w-full sm:w-auto text-xs"
+                    >
+                      Reveal Picks
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -314,6 +353,7 @@ export default function ContestPage() {
               onSubmitPicks={handleSubmitPicks}
               submitLabel={submitLabel}
               odds={odds}
+              hasStarted={hasStarted}
             />
           )}
         </main>
@@ -474,6 +514,7 @@ interface PrePickViewProps {
   onSubmitPicks: () => void;
   submitLabel: string;
   odds: MajorOddsSnapshot | null;
+  hasStarted: boolean;
 }
 
 function PrePickView({
@@ -491,8 +532,10 @@ function PrePickView({
   onSubmitPicks,
   submitLabel,
   odds,
+  hasStarted,
 }: PrePickViewProps) {
   const isOpen = state.contest.status === "open";
+  const picksLocked = !isOpen || hasStarted;
   const picksCount = Object.keys(picksByTierId).length;
 
   return (
@@ -506,7 +549,9 @@ function PrePickView({
           </h2>
           <p className="text-sm text-text-muted mb-4">
             {signedIn
-              ? "Your existing picks are loaded. Edit and update at will."
+              ? picksLocked
+                ? "Your picks are locked."
+                : "Your existing picks are loaded. Edit and update at will."
               : "Use the same name & PIN to retrieve picks. A new name creates a new entry."}
           </p>
 
@@ -535,10 +580,10 @@ function PrePickView({
             {!signedIn ? (
               <button
                 onClick={onSignIn}
-                disabled={saving || !isOpen || !name.trim() || !pin}
+                disabled={saving || picksLocked || !name.trim() || !pin}
                 className="btn btn-primary w-full"
               >
-                {isOpen ? "Sign in / Join" : "Picks locked"}
+                {picksLocked ? "Picks locked" : "Sign in / Join"}
               </button>
             ) : (
               <button onClick={onSignOut} className="btn btn-ghost w-full">
@@ -598,7 +643,7 @@ function PrePickView({
                 ? `${state.contest.expectedParticipants} participants submit`
                 : "everyone submits"}
             </span>
-            .
+            , or an admin reveals them.
           </div>
           <div className="text-right shrink-0 ml-3">
             <div className="font-serif text-2xl text-gold tabular">{picksCount}/6</div>
@@ -606,7 +651,7 @@ function PrePickView({
           </div>
         </div>
 
-        <fieldset disabled={!signedIn || !isOpen} className="space-y-3 disabled:opacity-50">
+        <fieldset disabled={!signedIn || picksLocked} className="space-y-3 disabled:opacity-50">
           {state.tiers.map((tier) => {
             const selectedGolfer = picksByTierId[tier.id];
             return (
@@ -635,7 +680,7 @@ function PrePickView({
 
           <button
             onClick={onSubmitPicks}
-            disabled={saving || !signedIn || !isOpen || picksCount !== 6}
+            disabled={saving || !signedIn || picksLocked || picksCount !== 6}
             className="btn btn-gold w-full text-sm py-3"
           >
             {picksCount !== 6

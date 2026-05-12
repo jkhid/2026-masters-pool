@@ -234,17 +234,22 @@ async function maybeReveal(contest: Contest, participants: ParticipantRow[]) {
 
   const activeParticipants = participants.filter((participant) => !participant.is_booted);
   const submittedCount = activeParticipants.filter((p) => Boolean(p.submitted_at)).length;
+  const hasStarted = contest.startsAt
+    ? new Date(contest.startsAt).getTime() <= Date.now()
+    : false;
 
-  // If expected_participants is set, reveal once that many have submitted.
-  // Otherwise, fall back to "all active have submitted" (legacy behavior).
-  let shouldReveal = false;
-  if (contest.expectedParticipants !== null) {
-    shouldReveal = submittedCount >= contest.expectedParticipants;
-  } else {
-    shouldReveal =
-      activeParticipants.length > 0 &&
-      activeParticipants.every((participant) => Boolean(participant.submitted_at));
-  }
+  // Reveal only when every active entrant has submitted. If expected_participants
+  // is set, require the active field to have reached that size before tee time;
+  // after tee time, non-submitters have already been booted, so reveal when the
+  // remaining active entrants are complete.
+  const hasFullExpectedField =
+    hasStarted ||
+    contest.expectedParticipants === null ||
+    activeParticipants.length >= contest.expectedParticipants;
+  const shouldReveal =
+    activeParticipants.length > 0 &&
+    hasFullExpectedField &&
+    submittedCount === activeParticipants.length;
 
   return shouldReveal ? updateContestStatus(contest, "revealed") : contest;
 }
@@ -437,13 +442,6 @@ async function getTierIdList(contestId: string) {
 export async function joinContest(contestId: string, name: string, pin: string) {
   const contest = await getContest(contestId);
   if (!contest) throw new Error("Contest not found.");
-  if (!["open", "setup"].includes(contest.status)) {
-    // For revealed/complete/archived, still allow signing in to view picks.
-    // But for setup, signing in shouldn't be possible.
-    if (contest.status === "setup") {
-      throw new Error("This contest is not open for entries yet.");
-    }
-  }
 
   const nameKey = normalizeParticipantName(name);
   if (!nameKey || pin.length < 4) {
@@ -476,6 +474,17 @@ export async function joinContest(contestId: string, name: string, pin: string) 
     // New participant - contest must be open
     if (contest.status !== "open") {
       throw new Error("This contest is not open for new entries.");
+    }
+    if (contest.startsAt && new Date(contest.startsAt).getTime() <= Date.now()) {
+      throw new Error("This contest has started. New entries are closed.");
+    }
+    if (contest.expectedParticipants !== null) {
+      const activeCount = existingRows.length > 0
+        ? 1
+        : await getActiveParticipantCount(contestId);
+      if (activeCount >= contest.expectedParticipants) {
+        throw new Error("This contest is full.");
+      }
     }
     isNew = true;
     const { salt, hash } = hashPin(pin);
@@ -514,6 +523,9 @@ export async function saveParticipantPicks(input: {
   const rows = await getContestRows(input.contestId);
   if (!rows || rows.contest.status !== "open") {
     throw new Error("Picks are locked for this contest.");
+  }
+  if (rows.contest.startsAt && new Date(rows.contest.startsAt).getTime() <= Date.now()) {
+    throw new Error("Picks are locked because this contest has started.");
   }
 
   const participantRow = rows.participants.find(
@@ -569,6 +581,18 @@ export async function saveParticipantPicks(input: {
   });
 
   await getPublicContestState(input.contestId);
+}
+
+async function getActiveParticipantCount(contestId: string) {
+  const rows = await supabaseRequest<Array<{ id: string }>>("participants", {
+    query: {
+      contest_id: `eq.${contestId}`,
+      is_booted: "eq.false",
+      select: "id",
+    },
+  });
+
+  return rows.length;
 }
 
 function majorName(key: MajorKey) {
