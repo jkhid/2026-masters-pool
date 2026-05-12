@@ -68,3 +68,89 @@ export interface ManualScores {
   golfers: Record<string, ManualScoreEntry>;
   lastUpdated: string;
 }
+
+export type MajorKey = "masters" | "pga-championship" | "us-open" | "open-championship";
+
+export interface MajorCalendarEntry {
+  majorKey: MajorKey;
+  espnEventId: string;
+  label: string;        // ESPN's label, e.g. "Masters Tournament"
+  startDate: string;    // ISO datetime — first round start (with suggested tee time applied)
+  endDate: string;      // ISO datetime — final round end
+  rawStartDate: string; // ISO datetime from ESPN — typically midnight at venue
+  rawEndDate: string;
+}
+
+export type MajorsCalendar = Partial<Record<MajorKey, MajorCalendarEntry>>;
+
+export type ContestStatus = "setup" | "open" | "revealed" | "complete" | "archived";
+
+export interface Major {
+  key: MajorKey;
+  name: string;
+  displayOrder: number;
+}
+
+export interface Contest {
+  id: string;
+  majorKey: MajorKey;
+  year: number;
+  name: string;
+  status: ContestStatus;
+  startsAt: string | null;
+  revealAt: string | null;
+  expectedParticipants: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TierGolfer {
+  id: string;
+  tierId: string;
+  name: string;
+  worldRank: number | null;
+  seed: number | null;
+  notes: string | null;
+}
+
+export interface Tier {
+  id: string;
+  contestId: string;
+  tierNumber: number;
+  label: string;
+  golfers: TierGolfer[];
+}
+
+export interface Participant {
+  id: string;
+  contestId: string;
+  name: string;
+  displayName: string;
+  isBooted: boolean;
+  submittedAt: string | null;
+  createdAt: string;
+}
+
+export interface ContestPick {
+  id: string;
+  participantId: string;
+  tierId: string;
+  golferName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParticipantPickSet {
+  participant: Participant;
+  picks: ContestPick[];
+}
+
+export interface PublicContestState {
+  contest: Contest;
+  tiers: Tier[];
+  participants: Pick<Participant, "id" | "displayName" | "isBooted" | "submittedAt">[];
+  revealPicks: boolean;
+  submittedCount: number;
+  activeParticipantCount: number;
+  pickSets: ParticipantPickSet[];
+}

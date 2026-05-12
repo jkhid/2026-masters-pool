@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchESPNScores, mergeWithManual } from "@/lib/espn";
-import { ManualScores } from "@/lib/types";
+import { GolferScore, ManualScores } from "@/lib/types";
+import { getFullRoster } from "@/lib/server/golfer-roster";
 import { readFile } from "fs/promises";
 import path from "path";
 
@@ -21,6 +22,29 @@ export async function GET() {
   ]);
 
   const merged = mergeWithManual(espnData, manualScores);
+
+  // Enrich with stub entries for any known golfer (from seed + accumulated cache)
+  // not present in the current ESPN scoreboard. This ensures headshots work for
+  // golfers not in the current event.
+  const roster = getFullRoster();
+  for (const [name, espnId] of roster) {
+    if (!merged.golfers[name]) {
+      const stub: GolferScore = {
+        name,
+        rounds: [null, null, null, null],
+        total: null,
+        thru: null,
+        status: "active",
+        position: null,
+        today: null,
+        espnId,
+      };
+      merged.golfers[name] = stub;
+    } else if (!merged.golfers[name].espnId && espnId) {
+      // Fill in missing espnId on existing entry
+      merged.golfers[name] = { ...merged.golfers[name], espnId };
+    }
+  }
 
   return NextResponse.json(merged, {
     headers: {

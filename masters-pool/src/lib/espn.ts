@@ -1,4 +1,15 @@
-import { GolferScore, ScoreData, ManualScores, HoleScore, RoundScorecard, CutLineInfo } from "./types";
+import {
+  GolferScore,
+  ScoreData,
+  ManualScores,
+  HoleScore,
+  RoundScorecard,
+  CutLineInfo,
+  MajorKey,
+  MajorCalendarEntry,
+  MajorsCalendar,
+} from "./types";
+import { recordGolferId } from "./server/golfer-roster";
 import { ALL_GOLFERS } from "./pool-data";
 
 const ESPN_URL = "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard";
@@ -68,7 +79,6 @@ function parseStatus(competitor: any): "active" | "cut" | "wd" | "dq" {
 }
 
 function parseThru(competitor: any): string | null {
-  const period = competitor.status?.period || 0;
   const thru = competitor.status?.thru;
   const statusType = competitor.status?.type?.name?.toLowerCase() || "";
 
@@ -223,8 +233,15 @@ function parseESPNData(data: any): ScoreData | null {
 
     for (const comp of competitors) {
       const espnName = comp.athlete?.displayName || comp.athlete?.fullName || "";
+      const espnId = comp.id || comp.athlete?.id || null;
       const total = parseTotal(comp);
       const status = parseStatus(comp);
+
+      // Always record the name→ID mapping in the roster cache, regardless of
+      // whether the golfer is in our pool. This builds up coverage over time.
+      if (espnName && espnId) {
+        recordGolferId(espnName, String(espnId));
+      }
 
       // Track all active competitor scores for cut line
       if (total !== null && status === "active") {
@@ -233,18 +250,24 @@ function parseESPNData(data: any): ScoreData | null {
 
       const poolName = findPoolName(espnName, nameMap);
 
+      const golferScore: GolferScore = {
+        name: poolName ?? espnName,
+        rounds: parseRounds(comp),
+        total,
+        thru: parseThru(comp),
+        status,
+        position: comp.status?.position?.displayName || comp.sortOrder?.toString() || null,
+        today: parseToday(comp),
+        espnId: espnId ? String(espnId) : null,
+        scorecards: parseScorecards(comp),
+      };
+
+      if (espnName) {
+        golfers[espnName] = { ...golferScore, name: espnName };
+      }
+
       if (poolName) {
-        golfers[poolName] = {
-          name: poolName,
-          rounds: parseRounds(comp),
-          total,
-          thru: parseThru(comp),
-          status,
-          position: comp.status?.position?.displayName || comp.sortOrder?.toString() || null,
-          today: parseToday(comp),
-          espnId: comp.id || comp.athlete?.id || null,
-          scorecards: parseScorecards(comp),
-        };
+        golfers[poolName] = { ...golferScore, name: poolName };
       }
     }
 
@@ -359,4 +382,104 @@ export function mergeWithManual(espnData: ScoreData | null, manualScores: Manual
 
   merged.golfers = mergedGolfers;
   return merged;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// MAJORS CALENDAR
+// Pulls the PGA Tour season calendar from ESPN and extracts the four majors,
+// applying a sensible first-tee-time default since ESPN doesn't publish actual
+// tee times until close to the event.
+// ────────────────────────────────────────────────────────────────────────────
+
+// Match ESPN calendar labels to our MajorKey values (case-insensitive substring).
+const MAJOR_LABEL_PATTERNS: Array<{ majorKey: MajorKey; pattern: RegExp }> = [
+  { majorKey: "masters", pattern: /masters\s+tournament|the\s+masters/i },
+  { majorKey: "pga-championship", pattern: /pga\s+championship/i },
+  { majorKey: "us-open", pattern: /u\.?s\.?\s+open/i },
+  { majorKey: "open-championship", pattern: /^the\s+open$|open\s+championship|british\s+open/i },
+];
+
+// Suggested first tee time per major (Thursday morning, in UTC).
+// These are approximations — admin can override.
+//
+// Masters (Augusta GA, EDT UTC-4 in April):       8:00 AM ET → 12:00 UTC
+// PGA Championship (varies US, EDT UTC-4 in May): 7:00 AM ET → 11:00 UTC
+// U.S. Open (varies US, often UTC-7 in June):     7:00 AM local; default to 11:00 UTC
+// The Open (UK, BST UTC+1 in July):               6:35 AM BST → 5:35 UTC
+const DEFAULT_FIRST_TEE_UTC: Record<MajorKey, { hour: number; minute: number }> = {
+  "masters": { hour: 12, minute: 0 },
+  "pga-championship": { hour: 11, minute: 0 },
+  "us-open": { hour: 11, minute: 0 },
+  "open-championship": { hour: 5, minute: 35 },
+};
+
+function applyFirstTeeTime(majorKey: MajorKey, rawIsoDate: string): string {
+  const date = new Date(rawIsoDate);
+  if (isNaN(date.getTime())) return rawIsoDate;
+  const { hour, minute } = DEFAULT_FIRST_TEE_UTC[majorKey];
+  date.setUTCHours(hour, minute, 0, 0);
+  return date.toISOString();
+}
+
+function matchMajorKey(label: string): MajorKey | null {
+  for (const { majorKey, pattern } of MAJOR_LABEL_PATTERNS) {
+    if (pattern.test(label)) return majorKey;
+  }
+  return null;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function parseCalendarEntries(data: any): MajorsCalendar {
+  const calendar = data?.leagues?.[0]?.calendar || [];
+  const result: MajorsCalendar = {};
+
+  for (const entry of calendar) {
+    const label: string = entry?.label || "";
+    const majorKey = matchMajorKey(label);
+    if (!majorKey || result[majorKey]) continue;
+
+    const rawStart = entry?.startDate;
+    const rawEnd = entry?.endDate;
+    if (!rawStart || !rawEnd) continue;
+
+    result[majorKey] = {
+      majorKey,
+      espnEventId: String(entry?.id ?? ""),
+      label,
+      rawStartDate: rawStart,
+      rawEndDate: rawEnd,
+      startDate: applyFirstTeeTime(majorKey, rawStart),
+      endDate: rawEnd,
+    };
+  }
+
+  return result;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export async function fetchMajorsCalendar(): Promise<MajorsCalendar> {
+  try {
+    // Reuse the existing cache from fetchESPNScores when fresh.
+    if (cachedData && Date.now() - cachedData.timestamp < CACHE_TTL) {
+      return parseCalendarEntries(cachedData.data);
+    }
+    const response = await fetch(ESPN_URL, {
+      next: { revalidate: 3600 }, // calendar changes rarely — cache for an hour
+      headers: { "User-Agent": "MajorsPool/1.0" },
+    });
+    if (!response.ok) {
+      return cachedData ? parseCalendarEntries(cachedData.data) : {};
+    }
+    const data = await response.json();
+    cachedData = { data, timestamp: Date.now() };
+    return parseCalendarEntries(data);
+  } catch (error) {
+    console.error("ESPN calendar fetch error:", error);
+    return cachedData ? parseCalendarEntries(cachedData.data) : {};
+  }
+}
+
+export async function getMajorCalendarEntry(majorKey: MajorKey): Promise<MajorCalendarEntry | null> {
+  const calendar = await fetchMajorsCalendar();
+  return calendar[majorKey] ?? null;
 }

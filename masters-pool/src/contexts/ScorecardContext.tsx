@@ -29,6 +29,7 @@ export function ScorecardProvider({ children, scoreData }: { children: ReactNode
       {children}
       {selectedGolfer && (
         <ScorecardModal
+          key={selectedGolfer}
           golferName={selectedGolfer}
           scorecards={scorecards}
           onClose={closeScorecard}

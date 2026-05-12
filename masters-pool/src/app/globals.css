@@ -1,52 +1,254 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-masters-green: #006747;
-  --color-masters-dark: #004d35;
-  --color-masters-yellow: #FFF200;
-  --color-masters-gold: #d4af37;
-  --color-card-bg: #1a1a2e;
-  --color-card-border: #2a2a4a;
-  --color-bg: #0f0f1a;
-  --color-text: #e8e8e8;
-  --color-text-muted: #9ca3af;
-  --color-counting: #22c55e;
-  --color-dropped: #6b7280;
-  --color-cut: #ef4444;
+  /* ────────── PALETTE ──────────
+     Refined Masters Pool: deep forest-tinted dark background,
+     muted Augusta green for actions, warm gold for highlights.
+     Lower saturation than the original, no neon yellow. */
+
+  --color-bg: #0c1116;            /* page background — deep, slightly cool */
+  --color-bg-elev: #11171d;       /* elevated surfaces / headers */
+  --color-surface: #161d23;       /* primary card surface */
+  --color-surface-2: #1c242c;     /* hover / nested surfaces */
+  --color-border: #232c36;        /* default border */
+  --color-border-strong: #2e3946; /* highlighted borders */
+  --color-divider: #1b2228;       /* faint internal dividers */
+
+  /* Augusta-inspired greens, deeper and less saturated */
+  --color-masters-green: #1f5444;       /* primary action green */
+  --color-masters-green-deep: #143c30;  /* shadow / pressed */
+  --color-masters-green-soft: #2a6b58;  /* hover */
+
+  /* Refined gold — warm, slightly desaturated */
+  --color-gold: #c8a04a;
+  --color-gold-soft: #d6b568;
+  --color-gold-deep: #8e7233;
+
+  /* Legacy aliases for older code references */
+  --color-masters-dark: #0a201a;
+  --color-masters-yellow: #c8a04a;
+  --color-masters-gold: #c8a04a;
+  --color-card-bg: #161d23;
+  --color-card-border: #232c36;
+
+  /* Text scale — clean, readable */
+  --color-text: #e7e7eb;
+  --color-text-muted: #95989f;
+  --color-text-faint: #5e636d;
+
+  /* Status colors — calmer than before */
+  --color-counting: #6fae73;   /* sage green for under par / counting */
+  --color-dropped: #4a5060;
+  --color-cut: #cf7b6b;        /* warm muted red for over par / cut */
+  --color-cut-deep: #8a4434;
+  --color-warning: #c79b4d;
+
+  /* ────────── TYPOGRAPHY ────────── */
+  --font-serif: var(--font-serif), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-@font-face {
-  font-family: 'Georgia';
-  src: local('Georgia');
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--color-bg);
+  background:
+    radial-gradient(ellipse 100% 60% at 50% -10%, rgba(31, 84, 68, 0.16), transparent 70%),
+    var(--color-bg);
   color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--font-serif);
+  letter-spacing: -0.015em;
 }
 
-/* Custom scrollbar */
+/* ────────── UTILITY HELPERS ────────── */
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Refined card — primary surface pattern */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.card-elev {
+  background: linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-surface) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.card-leader {
+  border-color: rgba(200, 160, 74, 0.45);
+  box-shadow: 0 0 0 1px rgba(200, 160, 74, 0.08), 0 8px 24px -12px rgba(200, 160, 74, 0.12);
+}
+
+/* Subtle label/eyebrow — used sparingly */
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* ────────── BUTTONS ────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.625rem 1.1rem;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--color-masters-green);
+  color: #fff;
+  border-color: var(--color-masters-green);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-masters-green-soft);
+  border-color: var(--color-masters-green-soft);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-gold {
+  background: var(--color-gold);
+  color: #1a1410;
+  border-color: var(--color-gold);
+  font-weight: 600;
+}
+.btn-gold:hover:not(:disabled) {
+  background: var(--color-gold-soft);
+  border-color: var(--color-gold-soft);
+}
+.btn-gold:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  color: #fff;
+  border-color: var(--color-border-strong);
+}
+.btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--color-cut);
+  border-color: rgba(207, 123, 107, 0.3);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(207, 123, 107, 0.08);
+  border-color: rgba(207, 123, 107, 0.5);
+}
+
+/* ────────── FORMS ────────── */
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-bg-elev);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.input::placeholder {
+  color: var(--color-text-faint);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--color-masters-green-soft);
+  background: var(--color-surface);
+}
+.input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ────────── SCROLLBAR ────────── */
+
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
   background: var(--color-masters-green);
-  border-radius: 3px;
 }
 
-/* Pulse animation for live indicator */
+/* ────────── ANIMATIONS ────────── */
+
 @keyframes pulse-live {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50%      { opacity: 0.3; }
 }
 .animate-pulse-live {
   animation: pulse-live 2s ease-in-out infinite;
 }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up {
+  animation: fade-up 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.stagger > * { animation: fade-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.12s; }
+.stagger > *:nth-child(4) { animation-delay: 0.16s; }
+.stagger > *:nth-child(5) { animation-delay: 0.20s; }
+.stagger > *:nth-child(6) { animation-delay: 0.24s; }
+.stagger > *:nth-child(7) { animation-delay: 0.28s; }
+.stagger > *:nth-child(8) { animation-delay: 0.32s; }
+.stagger > *:nth-child(9) { animation-delay: 0.36s; }

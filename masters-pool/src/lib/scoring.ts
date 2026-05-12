@@ -18,8 +18,16 @@ function getEffectiveToPar(golfer: GolferScore): number | null {
   return total;
 }
 
-export function calculateStandings(scoreData: ScoreData): PoolPlayerStanding[] {
-  const standings: PoolPlayerStanding[] = PLAYERS.map((player) => {
+export interface ScoringPlayerPicks {
+  name: string;
+  golfers: string[];
+}
+
+export function calculateStandingsForPlayers(
+  scoreData: ScoreData,
+  players: ScoringPlayerPicks[],
+): PoolPlayerStanding[] {
+  const standings: PoolPlayerStanding[] = players.map((player) => {
     const golferScores: GolferWithStatus[] = player.golfers.map((golferName) => {
       const score = scoreData.golfers[golferName] || null;
       return { name: golferName, score, counting: false };
@@ -71,7 +79,6 @@ export function calculateStandings(scoreData: ScoreData): PoolPlayerStanding[] {
   });
 
   // Assign ranks (handle ties)
-  let currentRank = 1;
   standings.forEach((s, i) => {
     if (i === 0) {
       s.rank = 1;
@@ -83,6 +90,10 @@ export function calculateStandings(scoreData: ScoreData): PoolPlayerStanding[] {
   });
 
   return standings;
+}
+
+export function calculateStandings(scoreData: ScoreData): PoolPlayerStanding[] {
+  return calculateStandingsForPlayers(scoreData, PLAYERS);
 }
 
 export function formatScore(score: number | null): string {
