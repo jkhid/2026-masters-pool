@@ -11,9 +11,10 @@ const CUT_PENALTY_PER_ROUND = 8; // 80 strokes on a par-72 = +8 per round
 function normalizeGolferName(name: string): string {
   return name
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // strip diacritics
+    .replace(/[̀-ͯ]/g, "")     // strip diacritics
     .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, " ")     // strip hyphens, periods, apostrophes
+    .replace(/['.\-]/g, "")       // joiner punctuation removed entirely (Hao-Tong → Haotong, J.J. → JJ)
+    .replace(/[^a-z0-9 ]/g, " ")  // other special chars → space
     .replace(/\s+/g, " ")
     .trim();
 }
