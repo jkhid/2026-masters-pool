@@ -3,6 +3,52 @@ import { GolferScore, GolferWithStatus, PoolPlayerStanding, ScoreData } from "./
 
 const CUT_PENALTY_PER_ROUND = 8; // 80 strokes on a par-72 = +8 per round
 
+// ─── Fuzzy name lookup ──────────────────────────────────────────────────────
+// Contest CSV names ("Hao-Tong Li") often don't exactly match ESPN's
+// displayName ("Haotong Li"). Normalize both sides and fall back to a
+// last-name + first-initial match for the trickier cases.
+
+function normalizeGolferName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip diacritics
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")     // strip hyphens, periods, apostrophes
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findGolferScore(scoreData: ScoreData, golferName: string): GolferScore | null {
+  // 1. Direct property access (fast path)
+  const direct = scoreData.golfers[golferName];
+  if (direct) return direct;
+
+  // 2. Normalized match (handles hyphens, diacritics, case)
+  const target = normalizeGolferName(golferName);
+  const entries = Object.entries(scoreData.golfers);
+  for (const [key, value] of entries) {
+    if (normalizeGolferName(key) === target) return value;
+  }
+
+  // 3. Last name + first initial fallback
+  const targetParts = target.split(" ");
+  if (targetParts.length >= 2) {
+    const targetLast = targetParts[targetParts.length - 1];
+    const targetFirstInitial = targetParts[0][0];
+    for (const [key, value] of entries) {
+      const keyParts = normalizeGolferName(key).split(" ");
+      if (keyParts.length < 2) continue;
+      const keyLast = keyParts[keyParts.length - 1];
+      const keyFirstInitial = keyParts[0][0];
+      if (keyLast === targetLast && keyFirstInitial === targetFirstInitial) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
 // Get a golfer's effective to-par total, adding +8 for each cut/wd/dq penalty round
 function getEffectiveToPar(golfer: GolferScore): number | null {
   if (golfer.total === null) return null;
@@ -29,7 +75,7 @@ export function calculateStandingsForPlayers(
 ): PoolPlayerStanding[] {
   const standings: PoolPlayerStanding[] = players.map((player) => {
     const golferScores: GolferWithStatus[] = player.golfers.map((golferName) => {
-      const score = scoreData.golfers[golferName] || null;
+      const score = findGolferScore(scoreData, golferName);
       return { name: golferName, score, counting: false };
     });
 
