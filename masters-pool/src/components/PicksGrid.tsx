@@ -110,7 +110,7 @@ function PlayerCard({ player }: { player: PoolPlayerStanding }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => openScorecard(g.name)}
+                    onClick={() => openScorecard(g.score?.name ?? g.name)}
                     className={`text-left text-sm font-medium truncate hover:text-gold transition-colors ${
                       isCut ? "line-through text-cut" : "text-text"
                     }`}

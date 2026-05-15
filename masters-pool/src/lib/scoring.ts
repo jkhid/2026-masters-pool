@@ -19,20 +19,34 @@ function normalizeGolferName(name: string): string {
     .trim();
 }
 
-function findGolferScore(scoreData: ScoreData, golferName: string): GolferScore | null {
+function hasScoreData(score: GolferScore): boolean {
+  return (
+    score.total !== null ||
+    score.today !== null ||
+    score.position !== null ||
+    score.rounds.some((round) => round !== null)
+  );
+}
+
+export function findGolferScore(scoreData: ScoreData, golferName: string): GolferScore | null {
   // 1. Direct property access (fast path)
   const direct = scoreData.golfers[golferName];
-  if (direct) return direct;
+  if (direct && hasScoreData(direct)) return direct;
 
   // 2. Normalized match (handles hyphens, diacritics, case)
   const target = normalizeGolferName(golferName);
   const entries = Object.entries(scoreData.golfers);
+  let normalizedFallback: GolferScore | null = null;
   for (const [key, value] of entries) {
-    if (normalizeGolferName(key) === target) return value;
+    if (normalizeGolferName(key) === target) {
+      if (hasScoreData(value)) return value;
+      normalizedFallback ??= value;
+    }
   }
 
   // 3. Last name + first initial fallback
   const targetParts = target.split(" ");
+  let initialFallback: GolferScore | null = null;
   if (targetParts.length >= 2) {
     const targetLast = targetParts[targetParts.length - 1];
     const targetFirstInitial = targetParts[0][0];
@@ -42,12 +56,13 @@ function findGolferScore(scoreData: ScoreData, golferName: string): GolferScore 
       const keyLast = keyParts[keyParts.length - 1];
       const keyFirstInitial = keyParts[0][0];
       if (keyLast === targetLast && keyFirstInitial === targetFirstInitial) {
-        return value;
+        if (hasScoreData(value)) return value;
+        initialFallback ??= value;
       }
     }
   }
 
-  return null;
+  return direct ?? normalizedFallback ?? initialFallback ?? null;
 }
 
 // Get a golfer's effective to-par total, adding +8 for each cut/wd/dq penalty round

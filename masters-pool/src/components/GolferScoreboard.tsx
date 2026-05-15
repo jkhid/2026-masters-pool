@@ -1,6 +1,6 @@
 "use client";
 import { ScoreData } from "@/lib/types";
-import { formatScore, formatRoundScore } from "@/lib/scoring";
+import { findGolferScore, formatScore, formatRoundScore } from "@/lib/scoring";
 import { useScorecard } from "@/contexts/ScorecardContext";
 
 interface GolferScoreboardProps {
@@ -20,8 +20,8 @@ export default function GolferScoreboard({ scoreData, golfers, ownersByGolfer }:
   const { openScorecard } = useScorecard();
 
   const sortedGolfers = [...golfers].sort((a, b) => {
-    const aScore = scoreData.golfers[a]?.total;
-    const bScore = scoreData.golfers[b]?.total;
+    const aScore = findGolferScore(scoreData, a)?.total;
+    const bScore = findGolferScore(scoreData, b)?.total;
     if (aScore === null || aScore === undefined) return 1;
     if (bScore === null || bScore === undefined) return -1;
     return aScore - bScore;
@@ -53,7 +53,7 @@ export default function GolferScoreboard({ scoreData, golfers, ownersByGolfer }:
 
       <div className="max-h-[600px] overflow-y-auto divide-y divide-divider">
         {sortedGolfers.map((name, idx) => {
-          const score = scoreData.golfers[name];
+          const score = findGolferScore(scoreData, name);
           const owners = ownersByGolfer[name] ?? [];
           const isCut = score?.status === "cut" || score?.status === "wd" || score?.status === "dq";
           const espnId = score?.espnId;
@@ -85,7 +85,7 @@ export default function GolferScoreboard({ scoreData, golfers, ownersByGolfer }:
                     }`}
                   />
                   <button
-                    onClick={() => openScorecard(name)}
+                    onClick={() => openScorecard(score?.name ?? name)}
                     className={`truncate text-sm text-left hover:text-gold transition-colors ${
                       isCut ? "line-through text-cut" : "text-text"
                     }`}
